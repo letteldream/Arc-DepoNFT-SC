@@ -4,7 +4,7 @@ import { solidity } from "ethereum-waffle";
 import { deployments, ethers, getNamedAccounts } from "hardhat";
 
 import {
-  ExecutionManager,
+  DepoExecutionManager,
   StrategyAnyItemFromCollectionForFixedPrice,
   StrategyPrivateSale,
   StrategyStandardSaleForFixedPrice,
@@ -12,11 +12,11 @@ import {
 
 chai.use(solidity);
 
-describe("ExecutionManager", () => {
+describe("DepoExecutionManager", () => {
   let deployer: SignerWithAddress;
   let caller: SignerWithAddress;
 
-  let executionManager: ExecutionManager;
+  let executionManager: DepoExecutionManager;
 
   let strategyStandardSaleForFixedPrice: StrategyStandardSaleForFixedPrice;
   let strategyAnyItemFromCollectionForFixedPrice: StrategyAnyItemFromCollectionForFixedPrice;
@@ -32,13 +32,13 @@ describe("ExecutionManager", () => {
     caller = signers[1];
 
     //deploy executionManager
-    let receipt = await deployments.deploy("ExecutionManager", {
+    let receipt = await deployments.deploy("DepoExecutionManager", {
       from: deployer.address,
       args: [],
       log: true,
     });
     executionManager = await ethers.getContractAt(
-      "ExecutionManager",
+      "DepoExecutionManager",
       receipt.address
     );
 

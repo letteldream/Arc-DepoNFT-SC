@@ -3,16 +3,16 @@ import chai, { expect } from "chai";
 import { solidity } from "ethereum-waffle";
 import { deployments, ethers, getNamedAccounts } from "hardhat";
 
-import { RoyaltyFeeManager, RoyaltyFeeRegistry } from "../typechain";
+import { DepoRoyaltyFeeManager, RoyaltyFeeRegistry } from "../typechain";
 
 chai.use(solidity);
 
-describe("RoyaltyFeeManager", () => {
+describe("DepoRoyaltyFeeManager", () => {
   let deployer: SignerWithAddress;
   let caller: SignerWithAddress;
 
   let royaltyFeeRegistry: RoyaltyFeeRegistry;
-  let royaltyFeeManager: RoyaltyFeeManager;
+  let royaltyFeeManager: DepoRoyaltyFeeManager;
 
   before(async () => {
     const signers = await ethers.getSigners();
@@ -29,13 +29,13 @@ describe("RoyaltyFeeManager", () => {
       receipt.address
     );
 
-    receipt = await deployments.deploy("RoyaltyFeeManager", {
+    receipt = await deployments.deploy("DepoRoyaltyFeeManager", {
       from: deployer.address,
       args: [royaltyFeeRegistry.address],
       log: true,
     });
     royaltyFeeManager = await ethers.getContractAt(
-      "RoyaltyFeeManager",
+      "DepoRoyaltyFeeManager",
       receipt.address
     );
   });
