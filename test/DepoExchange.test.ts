@@ -9,45 +9,45 @@ import { BigNumber, BigNumberish, BytesLike } from "ethers";
 import { deployments, ethers, getNamedAccounts } from "hardhat";
 
 import {
-  CurrencyManager,
-  ExecutionManager,
-  LooksRareExchange,
+  DepoCurrencyManager,
+  DepoExchange,
+  DepoExecutionManager,
+  DepoRoyaltyFeeManager,
+  DepoTransferSelectorNFT,
   MockERC20,
   MockERC721,
-  RoyaltyFeeManager,
   RoyaltyFeeRegistry,
   StrategyAnyItemFromCollectionForFixedPrice,
   StrategyPrivateSale,
   StrategyStandardSaleForFixedPrice,
   TransferManagerERC1155,
   TransferManagerERC721,
-  TransferSelectorNFT,
 } from "../typechain";
 import { MakerOrder, signMakeOrder } from "./utils/meta_transaction";
 
 chai.use(solidity);
 
-describe("LooksRareExchange", () => {
+describe("DepoExchange", () => {
   let deployer: SignerWithAddress;
   let caller: SignerWithAddress;
   let erc20Owner: SignerWithAddress;
   let erc721Owner: SignerWithAddress;
 
-  let looksRareExchange: LooksRareExchange;
-  let currencyManager: CurrencyManager;
-  let executionManager: ExecutionManager;
+  let depoExchange: DepoExchange;
+  let currencyManager: DepoCurrencyManager;
+  let executionManager: DepoExecutionManager;
 
   let strategyStandardSaleForFixedPrice: StrategyStandardSaleForFixedPrice;
   let strategyAnyItemFromCollectionForFixedPrice: StrategyAnyItemFromCollectionForFixedPrice;
   let strategyPrivateSale: StrategyPrivateSale;
 
-  let royaltyFeeManager: RoyaltyFeeManager;
+  let royaltyFeeManager: DepoRoyaltyFeeManager;
   let royaltyFeeRegistry: RoyaltyFeeRegistry;
 
   let transferManagerERC721: TransferManagerERC721;
   let transferManagerERC1155: TransferManagerERC1155;
 
-  let transferSelectorNFT: TransferSelectorNFT;
+  let transferSelectorNFT: DepoTransferSelectorNFT;
 
   let erc20Token: MockERC20;
   let erc721Token: MockERC721;
@@ -87,27 +87,27 @@ describe("LooksRareExchange", () => {
     await erc721Token.mint(erc721Owner.address, 2);
     await erc721Token.mint(erc721Owner.address, 3);
 
-    //deploy currencyManager
-    receipt = await deployments.deploy("CurrencyManager", {
+    //deploy DepoCurrencyManager
+    receipt = await deployments.deploy("DepoCurrencyManager", {
       from: deployer.address,
       args: [],
       log: true,
     });
     currencyManager = await ethers.getContractAt(
-      "CurrencyManager",
+      "DepoCurrencyManager",
       receipt.address
     );
 
     await currencyManager.addCurrency(erc20Token.address);
 
-    //deploy executionManager
-    receipt = await deployments.deploy("ExecutionManager", {
+    //deploy DepoExecutionManager
+    receipt = await deployments.deploy("DepoExecutionManager", {
       from: deployer.address,
       args: [],
       log: true,
     });
     executionManager = await ethers.getContractAt(
-      "ExecutionManager",
+      "DepoExecutionManager",
       receipt.address
     );
 
@@ -166,19 +166,19 @@ describe("LooksRareExchange", () => {
       receipt.address
     );
 
-    //deploy RoyaltyFeeManager
-    receipt = await deployments.deploy("RoyaltyFeeManager", {
+    //deploy DepoRoyaltyFeeManager
+    receipt = await deployments.deploy("DepoRoyaltyFeeManager", {
       from: deployer.address,
       args: [royaltyFeeRegistry.address],
       log: true,
     });
     royaltyFeeManager = await ethers.getContractAt(
-      "RoyaltyFeeManager",
+      "DepoRoyaltyFeeManager",
       receipt.address
     );
 
-    //deploy LooksRareExchange
-    receipt = await deployments.deploy("LooksRareExchange", {
+    //deploy DepoExchange
+    receipt = await deployments.deploy("DepoExchange", {
       from: deployer.address,
       args: [
         currencyManager.address,
@@ -189,14 +189,11 @@ describe("LooksRareExchange", () => {
       ],
       log: true,
     });
-    looksRareExchange = await ethers.getContractAt(
-      "LooksRareExchange",
-      receipt.address
-    );
+    depoExchange = await ethers.getContractAt("DepoExchange", receipt.address);
 
     receipt = await deployments.deploy("TransferManagerERC721", {
       from: deployer.address,
-      args: [looksRareExchange.address],
+      args: [depoExchange.address],
       log: true,
     });
     transferManagerERC721 = await ethers.getContractAt(
@@ -206,7 +203,7 @@ describe("LooksRareExchange", () => {
 
     receipt = await deployments.deploy("TransferManagerERC1155", {
       from: deployer.address,
-      args: [looksRareExchange.address],
+      args: [depoExchange.address],
       log: true,
     });
     transferManagerERC1155 = await ethers.getContractAt(
@@ -214,24 +211,23 @@ describe("LooksRareExchange", () => {
       receipt.address
     );
 
-    receipt = await deployments.deploy("TransferSelectorNFT", {
+    //deploy DepoTransferSelectorNFT
+    receipt = await deployments.deploy("DepoTransferSelectorNFT", {
       from: deployer.address,
       args: [transferManagerERC721.address, transferManagerERC1155.address],
       log: true,
     });
     transferSelectorNFT = await ethers.getContractAt(
-      "TransferSelectorNFT",
+      "DepoTransferSelectorNFT",
       receipt.address
     );
 
-    await looksRareExchange.updateTransferSelectorNFT(
-      transferSelectorNFT.address
-    );
+    await depoExchange.updateTransferSelectorNFT(transferSelectorNFT.address);
 
     await erc20Token
       .connect(erc20Owner)
       .approve(
-        looksRareExchange.address,
+        depoExchange.address,
         await erc20Token.balanceOf(erc20Owner.address)
       );
 
@@ -259,60 +255,54 @@ describe("LooksRareExchange", () => {
 
   describe("cancelAllOrdersForSender", async () => {
     it("userMinOrderNonce should be set", async () => {
-      looksRareExchange.connect(caller).cancelAllOrdersForSender(4500);
-      expect(
-        await looksRareExchange.userMinOrderNonce(caller.address)
-      ).to.be.equals(4500);
+      depoExchange.connect(caller).cancelAllOrdersForSender(4500);
+      expect(await depoExchange.userMinOrderNonce(caller.address)).to.be.equals(
+        4500
+      );
     });
 
     it("Cancel: Order nonce lower than current", async () => {
-      await expect(
-        looksRareExchange.connect(caller).cancelAllOrdersForSender(4000)
-      ).to.be.reverted;
+      await expect(depoExchange.connect(caller).cancelAllOrdersForSender(4000))
+        .to.be.reverted;
     });
 
     it("Cancel: Cannot cancel more orders", async () => {
       await expect(
-        looksRareExchange.connect(caller).cancelAllOrdersForSender(505000)
+        depoExchange.connect(caller).cancelAllOrdersForSender(505000)
       ).to.be.reverted;
     });
 
     it("userMinOrderNonce should be udpated", async () => {
-      looksRareExchange.connect(caller).cancelAllOrdersForSender(504000);
-      expect(
-        await looksRareExchange.userMinOrderNonce(caller.address)
-      ).to.be.equals(504000);
+      depoExchange.connect(caller).cancelAllOrdersForSender(504000);
+      expect(await depoExchange.userMinOrderNonce(caller.address)).to.be.equals(
+        504000
+      );
     });
   });
 
   describe("cancelMultipleMakerOrders", async () => {
     it("Cancel: Cannot be empty", async () => {
-      await expect(
-        looksRareExchange.connect(caller).cancelMultipleMakerOrders([])
-      ).to.be.reverted;
+      await expect(depoExchange.connect(caller).cancelMultipleMakerOrders([]))
+        .to.be.reverted;
     });
 
     it("Cancel: Order nonce lower than current", async () => {
       await expect(
-        looksRareExchange
-          .connect(caller)
-          .cancelMultipleMakerOrders([503000, 505000])
+        depoExchange.connect(caller).cancelMultipleMakerOrders([503000, 505000])
       ).to.be.reverted;
     });
 
     it("isUserOrderNonceExecutedOrCancelled should be set true", async () => {
-      looksRareExchange
-        .connect(caller)
-        .cancelMultipleMakerOrders([505000, 506000]);
+      depoExchange.connect(caller).cancelMultipleMakerOrders([505000, 506000]);
 
       expect(
-        await looksRareExchange
+        await depoExchange
           .connect(caller)
           .isUserOrderNonceExecutedOrCancelled(caller.address, 505000)
       ).to.be.equals(true);
 
       expect(
-        await looksRareExchange
+        await depoExchange
           .connect(caller)
           .isUserOrderNonceExecutedOrCancelled(caller.address, 506000)
       ).to.be.equals(true);
@@ -349,11 +339,11 @@ describe("LooksRareExchange", () => {
 
       const signedMakeOrder = await signMakeOrder(
         erc721Owner,
-        looksRareExchange.address,
+        depoExchange.address,
         makeOrder
       );
 
-      await looksRareExchange
+      await depoExchange
         .connect(erc20Owner)
         .matchAskWithTakerBid(takeOrder, signedMakeOrder);
 
@@ -391,7 +381,7 @@ describe("LooksRareExchange", () => {
         s: "0x40261ade532fa1d2c7293df30aaadb9b3c616fae525a0b56d3d411c841a85028",
       };
       await expect(
-        looksRareExchange
+        depoExchange
           .connect(erc20Owner)
           .matchAskWithTakerBid(takeOrder, makeOrder)
       ).to.be.reverted;
@@ -426,9 +416,7 @@ describe("LooksRareExchange", () => {
         s: "0x40261ade532fa1d2c7293df30aaadb9b3c616fae525a0b56d3d411c841a85028",
       };
       await expect(
-        looksRareExchange
-          .connect(caller)
-          .matchAskWithTakerBid(takeOrder, makeOrder)
+        depoExchange.connect(caller).matchAskWithTakerBid(takeOrder, makeOrder)
       ).to.be.reverted;
     });
 
@@ -464,7 +452,7 @@ describe("LooksRareExchange", () => {
 
         //nonce 1 is already cancelled
         await expect(
-          looksRareExchange
+          depoExchange
             .connect(erc20Owner)
             .matchAskWithTakerBid(takeOrder, makeOrder)
         ).to.be.reverted;
@@ -500,7 +488,7 @@ describe("LooksRareExchange", () => {
         };
 
         await expect(
-          looksRareExchange
+          depoExchange
             .connect(erc20Owner)
             .matchAskWithTakerBid(takeOrder, makeOrder)
         ).to.be.reverted;
@@ -536,7 +524,7 @@ describe("LooksRareExchange", () => {
         };
 
         await expect(
-          looksRareExchange
+          depoExchange
             .connect(erc20Owner)
             .matchAskWithTakerBid(takeOrder, makeOrder)
         ).to.be.reverted;
@@ -573,7 +561,7 @@ describe("LooksRareExchange", () => {
         };
 
         await expect(
-          looksRareExchange
+          depoExchange
             .connect(erc20Owner)
             .matchAskWithTakerBid(takeOrder, makeOrder)
         ).to.be.reverted;
@@ -608,7 +596,7 @@ describe("LooksRareExchange", () => {
         };
 
         await expect(
-          looksRareExchange
+          depoExchange
             .connect(erc20Owner)
             .matchAskWithTakerBid(takeOrder, makeOrder)
         ).to.be.reverted;
@@ -646,11 +634,11 @@ describe("LooksRareExchange", () => {
 
       const signedMakeOrder = await signMakeOrder(
         erc20Owner,
-        looksRareExchange.address,
+        depoExchange.address,
         makeOrder
       );
 
-      await looksRareExchange
+      await depoExchange
         .connect(erc721Owner)
         .matchBidWithTakerAsk(takeOrder, signedMakeOrder);
 
@@ -688,7 +676,7 @@ describe("LooksRareExchange", () => {
         s: "0x40261ade532fa1d2c7293df30aaadb9b3c616fae525a0b56d3d411c841a85028",
       };
       await expect(
-        looksRareExchange
+        depoExchange
           .connect(erc20Owner)
           .matchBidWithTakerAsk(takeOrder, makeOrder)
       ).to.be.reverted;
@@ -728,7 +716,7 @@ describe("LooksRareExchange", () => {
         s: "0x40261ade532fa1d2c7293df30aaadb9b3c616fae525a0b56d3d411c841a85028",
       };
       await expect(
-        looksRareExchange
+        depoExchange
           .connect(erc20Owner)
           .matchAskWithTakerBidUsingETHAndWETH(takeOrder, makeOrder)
       ).to.be.reverted;
@@ -762,7 +750,7 @@ describe("LooksRareExchange", () => {
         s: "0x40261ade532fa1d2c7293df30aaadb9b3c616fae525a0b56d3d411c841a85028",
       };
       await expect(
-        looksRareExchange
+        depoExchange
           .connect(erc20Owner)
           .matchAskWithTakerBidUsingETHAndWETH(takeOrder, makeOrder)
       ).to.be.reverted;
@@ -796,7 +784,7 @@ describe("LooksRareExchange", () => {
         s: "0x40261ade532fa1d2c7293df30aaadb9b3c616fae525a0b56d3d411c841a85028",
       };
       await expect(
-        looksRareExchange
+        depoExchange
           .connect(erc20Owner)
           .matchAskWithTakerBidUsingETHAndWETH(takeOrder, makeOrder, {
             value: 4,
@@ -807,50 +795,48 @@ describe("LooksRareExchange", () => {
 
   describe("updateCurrencyManager", async () => {
     it("currency manager address shouldn't null", async () => {
-      await expect(looksRareExchange.updateCurrencyManager(ZERO_ADDRESS)).to.be
+      await expect(depoExchange.updateCurrencyManager(ZERO_ADDRESS)).to.be
         .reverted;
     });
     it("currency manager address should be updated", async () => {
       //test with looksrare currency manager;
       const looksrareCurrentyManagerAddress =
         "0xC881ADdf409eE2C4b6bBc8B607c2C5CAFaB93d25";
-      await looksRareExchange.updateCurrencyManager(
+      await depoExchange.updateCurrencyManager(looksrareCurrentyManagerAddress);
+      expect(await depoExchange.currencyManager()).to.be.equal(
         looksrareCurrentyManagerAddress
       );
-      expect(await looksRareExchange.currencyManager()).to.be.equal(
-        looksrareCurrentyManagerAddress
-      );
-      await looksRareExchange.updateCurrencyManager(currencyManager.address);
+      await depoExchange.updateCurrencyManager(currencyManager.address);
     });
   });
 
   describe("updateExecutionManager", async () => {
     it("execution manager address shouldn't null", async () => {
-      await expect(looksRareExchange.updateExecutionManager(ZERO_ADDRESS)).to.be
+      await expect(depoExchange.updateExecutionManager(ZERO_ADDRESS)).to.be
         .reverted;
     });
     it("execution manager address should be updated", async () => {
       //test with looksrare execution manager;
       const looksrareExecutionManagerAddress =
         "0x9Cc58bf22a173C0Fa8791c13Df396d18185d62b2";
-      await looksRareExchange.updateExecutionManager(
+      await depoExchange.updateExecutionManager(
         looksrareExecutionManagerAddress
       );
-      expect(await looksRareExchange.executionManager()).to.be.equal(
+      expect(await depoExchange.executionManager()).to.be.equal(
         looksrareExecutionManagerAddress
       );
-      await looksRareExchange.updateExecutionManager(executionManager.address);
+      await depoExchange.updateExecutionManager(executionManager.address);
     });
   });
 
   describe("updateProtocolFeeRecipient", async () => {
     it("protocolFeeRecipient should be updated", async () => {
       const randomAddress = caller.address;
-      await looksRareExchange.updateProtocolFeeRecipient(randomAddress);
-      expect(await looksRareExchange.protocolFeeRecipient()).to.be.equal(
+      await depoExchange.updateProtocolFeeRecipient(randomAddress);
+      expect(await depoExchange.protocolFeeRecipient()).to.be.equal(
         randomAddress
       );
-      await looksRareExchange.updateProtocolFeeRecipient(
+      await depoExchange.updateProtocolFeeRecipient(
         protocolFeeRecipientAddress
       );
     });
@@ -858,41 +844,39 @@ describe("LooksRareExchange", () => {
 
   describe("updateRoyaltyFeeManager", async () => {
     it("royaltyFee manager address shouldn't null", async () => {
-      await expect(looksRareExchange.updateRoyaltyFeeManager(ZERO_ADDRESS)).to
-        .be.reverted;
+      await expect(depoExchange.updateRoyaltyFeeManager(ZERO_ADDRESS)).to.be
+        .reverted;
     });
     it("royaltyFee manager address should be updated", async () => {
       //test with looksrare royaltyFee manager;
       const looksrareRoyaltyFeeManagerAddress =
         "0x7358182024c9f1B2e6b0153e60bf6156B7eF4906";
-      await looksRareExchange.updateRoyaltyFeeManager(
+      await depoExchange.updateRoyaltyFeeManager(
         looksrareRoyaltyFeeManagerAddress
       );
-      expect(await looksRareExchange.royaltyFeeManager()).to.be.equal(
+      expect(await depoExchange.royaltyFeeManager()).to.be.equal(
         looksrareRoyaltyFeeManagerAddress
       );
-      await looksRareExchange.updateRoyaltyFeeManager(executionManager.address);
+      await depoExchange.updateRoyaltyFeeManager(executionManager.address);
     });
   });
 
   describe("updateTransferSelectorNFT", async () => {
     it("transfer selecorNFT address shouldn't null", async () => {
-      await expect(looksRareExchange.updateTransferSelectorNFT(ZERO_ADDRESS)).to
-        .be.reverted;
+      await expect(depoExchange.updateTransferSelectorNFT(ZERO_ADDRESS)).to.be
+        .reverted;
     });
     it("transfer selecorNFT address should be updated", async () => {
       //test with looksrare transfer selecorNFT;
       const looksrareTransferSelectorNFTAddress =
         "0x9Ba628F27aAc9B2D78A9f2Bf40A8a6DF4Ccd9e2c";
-      await looksRareExchange.updateTransferSelectorNFT(
+      await depoExchange.updateTransferSelectorNFT(
         looksrareTransferSelectorNFTAddress
       );
-      expect(await looksRareExchange.transferSelectorNFT()).to.be.equal(
+      expect(await depoExchange.transferSelectorNFT()).to.be.equal(
         looksrareTransferSelectorNFTAddress
       );
-      await looksRareExchange.updateTransferSelectorNFT(
-        transferSelectorNFT.address
-      );
+      await depoExchange.updateTransferSelectorNFT(transferSelectorNFT.address);
     });
   });
 

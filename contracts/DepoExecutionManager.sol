@@ -7,10 +7,10 @@ import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet
 import {IExecutionManager} from "./interfaces/IExecutionManager.sol";
 
 /**
- * @title ExecutionManager
- * @notice It allows adding/removing execution strategies for trading on the LooksRare exchange.
+ * @title DepoExecutionManager
+ * @notice It allows adding/removing execution strategies for trading on the Depo exchange.
  */
-contract ExecutionManager is IExecutionManager, Ownable {
+contract DepoExecutionManager is IExecutionManager, Ownable {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     EnumerableSet.AddressSet private _whitelistedStrategies;

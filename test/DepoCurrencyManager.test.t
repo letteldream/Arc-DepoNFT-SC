@@ -3,14 +3,14 @@ import chai, { expect } from "chai";
 import { solidity } from "ethereum-waffle";
 import { deployments, ethers, getNamedAccounts } from "hardhat";
 
-import { CurrencyManager } from "../typechain";
+import { DepoCurrencyManager } from "../typechain";
 
 chai.use(solidity);
 
-describe("CurrencyManager", () => {
+describe("DepoCurrencyManager", () => {
   let deployer: SignerWithAddress;
   let caller: SignerWithAddress;
-  let currencyManager: CurrencyManager;
+  let currencyManager: DepoCurrencyManager;
 
   const EthAddress = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
   const USDTAddress = "0xdAC17F958D2ee523a2206206994597C13D831ec7";
@@ -21,13 +21,13 @@ describe("CurrencyManager", () => {
     deployer = signers[0];
     caller = signers[1];
 
-    const receipt: any = await deployments.deploy("CurrencyManager", {
+    const receipt: any = await deployments.deploy("DepoCurrencyManager", {
       from: deployer.address,
       args: [],
       log: true,
     });
     currencyManager = await ethers.getContractAt(
-      "CurrencyManager",
+      "DepoCurrencyManager",
       receipt.address
     );
   });

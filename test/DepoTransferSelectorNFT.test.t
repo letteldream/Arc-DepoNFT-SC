@@ -4,17 +4,17 @@ import { solidity } from "ethereum-waffle";
 import { deployments, ethers, getNamedAccounts } from "hardhat";
 
 import {
-  CurrencyManager,
-  ExecutionManager,
-  LooksRareExchange,
-  RoyaltyFeeManager,
+  DepoCurrencyManager,
+  DepoExchange,
+  DepoExecutionManager,
+  DepoRoyaltyFeeManager,
+  DepoTransferSelectorNFT,
   RoyaltyFeeRegistry,
   StrategyAnyItemFromCollectionForFixedPrice,
   StrategyPrivateSale,
   StrategyStandardSaleForFixedPrice,
   TransferManagerERC1155,
   TransferManagerERC721,
-  TransferSelectorNFT,
 } from "../typechain";
 
 chai.use(solidity);
@@ -23,21 +23,21 @@ describe("TransferSelectorNFT", () => {
   let deployer: SignerWithAddress;
   let caller: SignerWithAddress;
 
-  let looksRareExchange: LooksRareExchange;
-  let currencyManager: CurrencyManager;
-  let executionManager: ExecutionManager;
+  let depoExchange: DepoExchange;
+  let currencyManager: DepoCurrencyManager;
+  let executionManager: DepoExecutionManager;
 
   let strategyStandardSaleForFixedPrice: StrategyStandardSaleForFixedPrice;
   let strategyAnyItemFromCollectionForFixedPrice: StrategyAnyItemFromCollectionForFixedPrice;
   let strategyPrivateSale: StrategyPrivateSale;
 
-  let royaltyFeeManager: RoyaltyFeeManager;
+  let royaltyFeeManager: DepoRoyaltyFeeManager;
   let royaltyFeeRegistry: RoyaltyFeeRegistry;
 
   let transferManagerERC721: TransferManagerERC721;
   let transferManagerERC1155: TransferManagerERC1155;
 
-  let transferSelectorNFT: TransferSelectorNFT;
+  let transferSelectorNFT: DepoTransferSelectorNFT;
 
   const WETHAddress = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
   const protocolFeeRecipientAddress =
@@ -56,27 +56,27 @@ describe("TransferSelectorNFT", () => {
     deployer = signers[0];
     caller = signers[1];
 
-    //deploy currencyManager
-    let receipt = await deployments.deploy("CurrencyManager", {
+    //deploy DepoCurrencyManager
+    let receipt = await deployments.deploy("DepoCurrencyManager", {
       from: deployer.address,
       args: [],
       log: true,
     });
     currencyManager = await ethers.getContractAt(
-      "CurrencyManager",
+      "DepoCurrencyManager",
       receipt.address
     );
 
     currencyManager.addCurrency(WETHAddress);
 
-    //deploy executionManager
-    receipt = await deployments.deploy("ExecutionManager", {
+    //deploy DepoExecutionManager
+    receipt = await deployments.deploy("DepoExecutionManager", {
       from: deployer.address,
       args: [],
       log: true,
     });
     executionManager = await ethers.getContractAt(
-      "ExecutionManager",
+      "DepoExecutionManager",
       receipt.address
     );
 
@@ -133,19 +133,19 @@ describe("TransferSelectorNFT", () => {
       receipt.address
     );
 
-    //deploy RoyaltyFeeManager
-    receipt = await deployments.deploy("RoyaltyFeeManager", {
+    //deploy DepoRoyaltyFeeManager
+    receipt = await deployments.deploy("DepoRoyaltyFeeManager", {
       from: deployer.address,
       args: [royaltyFeeRegistry.address],
       log: true,
     });
     royaltyFeeManager = await ethers.getContractAt(
-      "RoyaltyFeeManager",
+      "DepoRoyaltyFeeManager",
       receipt.address
     );
 
-    //deploy LooksRareExchange
-    receipt = await deployments.deploy("LooksRareExchange", {
+    //deploy DepoExchange
+    receipt = await deployments.deploy("DepoExchange", {
       from: deployer.address,
       args: [
         currencyManager.address,
@@ -156,14 +156,11 @@ describe("TransferSelectorNFT", () => {
       ],
       log: true,
     });
-    looksRareExchange = await ethers.getContractAt(
-      "LooksRareExchange",
-      receipt.address
-    );
+    depoExchange = await ethers.getContractAt("DepoExchange", receipt.address);
 
     receipt = await deployments.deploy("TransferManagerERC721", {
       from: deployer.address,
-      args: [looksRareExchange.address],
+      args: [depoExchange.address],
       log: true,
     });
     transferManagerERC721 = await ethers.getContractAt(
@@ -175,7 +172,7 @@ describe("TransferSelectorNFT", () => {
 
     receipt = await deployments.deploy("TransferManagerERC1155", {
       from: deployer.address,
-      args: [looksRareExchange.address],
+      args: [depoExchange.address],
       log: true,
     });
     transferManagerERC1155 = await ethers.getContractAt(
@@ -185,13 +182,14 @@ describe("TransferSelectorNFT", () => {
 
     TransferManagerERC1155Address = transferManagerERC1155.address;
 
-    receipt = await deployments.deploy("TransferSelectorNFT", {
+    //deploy DepoTransferSelectorNFT
+    receipt = await deployments.deploy("DepoTransferSelectorNFT", {
       from: deployer.address,
       args: [transferManagerERC721.address, transferManagerERC1155.address],
       log: true,
     });
     transferSelectorNFT = await ethers.getContractAt(
-      "TransferSelectorNFT",
+      "DepoTransferSelectorNFT",
       receipt.address
     );
   });
