@@ -8,10 +8,10 @@ import {IRoyaltyFeeManager} from "./interfaces/IRoyaltyFeeManager.sol";
 import {IRoyaltyFeeRegistry} from "./interfaces/IRoyaltyFeeRegistry.sol";
 
 /**
- * @title RoyaltyFeeManager
+ * @title DepoRoyaltyFeeManager
  * @notice It handles the logic to check and transfer royalty fees (if any).
  */
-contract RoyaltyFeeManager is IRoyaltyFeeManager, Ownable {
+contract DepoRoyaltyFeeManager is IRoyaltyFeeManager, Ownable {
     // https://eips.ethereum.org/EIPS/eip-2981
     bytes4 public constant INTERFACE_ID_ERC2981 = 0x2a55205a;
 
