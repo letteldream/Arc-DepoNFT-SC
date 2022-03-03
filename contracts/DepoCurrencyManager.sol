@@ -7,10 +7,10 @@ import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet
 import {ICurrencyManager} from "./interfaces/ICurrencyManager.sol";
 
 /**
- * @title CurrencyManager
- * @notice It allows adding/removing currencies for trading on the LooksRare exchange.
+ * @title DepoCurrencyManager
+ * @notice It allows adding/removing currencies for trading on the Depo exchange.
  */
-contract CurrencyManager is ICurrencyManager, Ownable {
+contract DepoCurrencyManager is ICurrencyManager, Ownable {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     EnumerableSet.AddressSet private _whitelistedCurrencies;

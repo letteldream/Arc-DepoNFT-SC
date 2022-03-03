@@ -7,10 +7,10 @@ import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import {ITransferSelectorNFT} from "./interfaces/ITransferSelectorNFT.sol";
 
 /**
- * @title TransferSelectorNFT
+ * @title DepoTransferSelectorNFT
  * @notice It selects the NFT transfer manager based on a collection address.
  */
-contract TransferSelectorNFT is ITransferSelectorNFT, Ownable {
+contract DepoTransferSelectorNFT is ITransferSelectorNFT, Ownable {
     // ERC721 interfaceID
     bytes4 public constant INTERFACE_ID_ERC721 = 0x80ac58cd;
     // ERC1155 interfaceID
