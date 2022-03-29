@@ -1,9 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import {ITransferManagerNFT} from "../interfaces/ITransferManagerNFT.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
-import {ITransferManagerNFT} from "../interfaces/ITransferManagerNFT.sol";
+interface IArc721 is IERC721 {
+    function transferFromOrMint(
+        address,
+        address,
+        uint256
+    ) external;
+}
 
 /**
  * @title TransferManagerERC721
@@ -36,7 +43,6 @@ contract TransferManagerERC721 is ITransferManagerNFT {
         uint256
     ) external override {
         require(msg.sender == DEPO_EXCHANGE, "Transfer: Only Depo Exchange");
-        // https://docs.openzeppelin.com/contracts/2.x/api/token/erc721#IERC721-safeTransferFrom
-        IERC721(collection).safeTransferFrom(from, to, tokenId);
+        IArc721(collection).transferFromOrMint(from, to, tokenId);
     }
 }
