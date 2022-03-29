@@ -1,108 +1,72 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "./libraries/ERC1155.sol";
-import "./libraries/ERC1155MintBurn.sol";
-import "./libraries/ERC1155Metadata.sol";
+import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
+import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Supply.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
+import "./libraries/OperatorRole.sol";
 
 /**
  * @title Arc1155
- * Arc1155 - ERC1155 contract that has mint functionality, 
- * and supports useful standards from OpenZeppelin,
-  like _exists(), name(), symbol(), and totalSupply()
+ * Arc1155 - ERC1155 contract that has mint functionality,
+ * and supports useful standards from OpenZeppelin
  */
-contract Arc1155 is ERC1155, ERC1155MintBurn, ERC1155Metadata {
-    event Minted(
-        uint256 indexed tokenId,
-        address indexed minter,
-        string tokenUri
-    );
-
-    uint256 private _currentTokenId = 0;
-
-    mapping(uint256 => string) private _tokenURIs;
-
-    mapping(uint256 => uint256) public tokenSupply;
+contract Arc1155 is OperatorRole, ERC1155, ERC1155Supply {
+    using Strings for uint256;
 
     // Contract name
     string public name = "Arc1155";
     // Contract symbol
     string public symbol = "ARC1155";
 
+    constructor(string memory uri_) ERC1155(uri_) {}
+
     function uri(uint256 _id) public view override returns (string memory) {
-        require(_exists(_id), "ERC721Tradable#uri: NONEXISTENT_TOKEN");
-        return _tokenURIs[_id];
+        require(exists(_id), "ERC1155Metadata: URI query for nonexistent token");
+
+        string memory baseURI = super.uri(_id);
+        return bytes(baseURI).length > 0 ? string(abi.encodePacked(baseURI, _id.toString())) : "";
     }
 
     /**
-     * @dev Returns the total quantity for a token ID
-     * @param _id uint256 ID of the token to query
-     * @return amount of token in existence
+     * @dev transfer the token if the tokenId exists, otherwise mint the token
+     *
+     * Add the TransferManagerERC1155 address as an operator to allow the lazymint
+     *
+     * @param from address that is sending a token
+     * @param to address that is receiving a token
+     * @param tokenId token id that is being sent or minted
+     * @param amount amount to be sent or minted
      */
-    function totalSupply(uint256 _id) public view returns (uint256) {
-        return tokenSupply[_id];
-    }
-
-    /**
-     * @dev Creates a new token type and assigns _supply to an address
-     * @param _supply Optional amount to supply the first owner
-     * @param _uri Optional URI for this token type
-     */
-    function mint(
-        uint256 _supply,
-        string calldata _uri
-    ) external {
-        require(_supply > 0);
-
-        uint256 _id = _getNextTokenID();
-        _incrementTokenTypeId();
-
-        if (bytes(_uri).length > 0) {
-            emit URI(_uri, _id);
+    function transferFromOrMint(
+        address from,
+        address to,
+        uint256 tokenId,
+        uint256 amount
+    ) external onlyOperator {
+        if (exists(tokenId)) {
+            safeTransferFrom(from, to, tokenId, amount, "");
+        } else {
+            _mint(to, tokenId, amount, bytes(""));
         }
-
-        _mint(msg.sender, _id, _supply, bytes(""));
-        tokenSupply[_id] = _supply;
-
-        _setTokenURI(_id, _uri);
     }
 
-    function getCurrentTokenID() public view returns (uint256) {
-        return _currentTokenId;
+    /// @notice Set the base uri
+    function setBaseURI(string memory newuri) external onlyOperator {
+        _setURI(newuri);
     }
 
     /**
-     * @dev Returns whether the specified token exists by checking to see if it has a creator
-     * @param _id uint256 ID of the token to query the existence of
-     * @return bool whether the token exists
+     * @dev See {ERC1155Supply-_beforeTokenTransfer}.
      */
-    function _exists(uint256 _id) public view returns (bool) {
-        return tokenSupply[_id] > 0;
-    }
-
-    /**
-     * @dev calculates the next token ID based on value of _currentTokenId
-     * @return uint256 for the next token ID
-     */
-    function _getNextTokenID() private view returns (uint256) {
-        return _currentTokenId + 1;
-    }
-
-    /**
-     * @dev increments the value of _currentTokenId
-     */
-    function _incrementTokenTypeId() private {
-        _currentTokenId++;
-    }
-
-    /**
-     * @dev Internal function to set the token URI for a given token.
-     * Reverts if the token ID does not exist.
-     * @param _id uint256 ID of the token to set its URI
-     * @param _uri string URI to assign
-     */
-    function _setTokenURI(uint256 _id, string memory _uri) internal {
-        require(_exists(_id), "_setTokenURI: Token should exist");
-        _tokenURIs[_id] = _uri;
+    function _beforeTokenTransfer(
+        address operator,
+        address from,
+        address to,
+        uint256[] memory ids,
+        uint256[] memory amounts,
+        bytes memory data
+    ) internal override(ERC1155, ERC1155Supply) {
+        super._beforeTokenTransfer(operator, from, to, ids, amounts, data);
     }
 }
