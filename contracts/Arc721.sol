@@ -3,57 +3,48 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
-import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
+import "./libraries/OperatorRole.sol";
 
 /**
  * @title Arc721
  * Arc721 - ERC721 contract that has minting functionality.
  */
-contract Arc721 is ERC721, ERC721Enumerable, ERC721URIStorage {
-    event Minted(
-        uint256 indexed tokenId,
-        address indexed minter,
-        string tokenUri
-    );
-
-    uint256 private _currentTokenId = 0;
+contract Arc721 is OperatorRole, ERC721, ERC721Enumerable {
+    string public uri;
 
     /// @notice Contract constructor
-    constructor() ERC721("Arc721", "ARC721") {}
+    constructor(string memory uri_) ERC721("Arc721", "ARC721") {
+        uri = uri_;
+    }
 
-    /**
-     * @dev Mints a token to an address with a tokenURI.
-     * @param _tokenUri link to metadata
-     */
-    function mint(string calldata _tokenUri) external {
-        uint256 newTokenId = _getNextTokenId();
-        _safeMint(_msgSender(), newTokenId);
-        _setTokenURI(newTokenId, _tokenUri);
-        _incrementTokenId();
+    /// @notice Set the base URI
+    function setBaseURI(string memory uri_) external onlyOperator {
+        uri = uri_;
+    }
 
-        emit Minted(newTokenId, _msgSender(), _tokenUri);
+    function _baseURI() internal view override returns (string memory) {
+        return uri;
     }
 
     /**
-     * @dev calculates the next token ID based on value of _currentTokenId
-     * @return uint256 for the next token ID
+     * @dev transfer the token if the tokenId exists, otherwise mint the token
+     *
+     * Add the TransferManagerERC721 address as an operator to allow the lazymint
+     *
+     * @param from address that is sending a token
+     * @param to address that is receiving a token
+     * @param tokenId token id that is being sent or minted
      */
-    function _getNextTokenId() private view returns (uint256) {
-        return _currentTokenId + 1;
-    }
-
-    /**
-     * @dev increments the value of _currentTokenId
-     */
-    function _incrementTokenId() private {
-        _currentTokenId++;
-    }
-
-    /**
-     * @dev See {IERC721Metadata-tokenURI}.
-     */
-    function tokenURI(uint256 tokenId) public view virtual override(ERC721, ERC721URIStorage) returns (string memory) {
-        return super.tokenURI(tokenId);
+    function transferFromOrMint(
+        address from,
+        address to,
+        uint256 tokenId
+    ) external onlyOperator {
+        if (_exists(tokenId)) {
+            safeTransferFrom(from, to, tokenId, "");
+        } else {
+            _mint(to, tokenId);
+        }
     }
 
     /**
@@ -80,23 +71,15 @@ contract Arc721 is ERC721, ERC721Enumerable, ERC721URIStorage {
     }
 
     /**
-     * @dev Destroys `tokenId`.
-     * The approval is cleared when the token is burned.
-     *
-     * Requirements:
-     *
-     * - `tokenId` must exist.
-     *
-     * Emits a {Transfer} event.
-     */
-    function _burn(uint256 tokenId) internal virtual override(ERC721, ERC721URIStorage) {
-        super._burn(tokenId);
-    }
-
-    /**
      * @dev See {IERC165-supportsInterface}.
      */
-    function supportsInterface(bytes4 interfaceId) public view virtual override(ERC721, ERC721Enumerable) returns (bool) {
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        virtual
+        override(ERC721, ERC721Enumerable)
+        returns (bool)
+    {
         return super.supportsInterface(interfaceId);
     }
 }
