@@ -161,12 +161,12 @@ contract DepoExchange is IDepoExchange, ReentrancyGuard, Ownable {
         // If not enough ETH to cover the price, use WETH
         if (takerBid.price > msg.value) {
             IERC20(WETH).safeTransferFrom(msg.sender, address(this), (takerBid.price - msg.value));
+
+            // Unwrap WETH sent to this contract
+            IWETH(WETH).withdraw(takerBid.price - msg.value);
         } else {
             require(takerBid.price == msg.value, "Order: Msg.value too high");
         }
-
-        // Wrap ETH sent to this contract
-        IWETH(WETH).deposit{value: msg.value}();
 
         // Check the maker ask order
         bytes32 askHash = makerAsk.hash();
@@ -182,7 +182,7 @@ contract DepoExchange is IDepoExchange, ReentrancyGuard, Ownable {
         _isUserOrderNonceExecutedOrCancelled[makerAsk.signer][makerAsk.nonce] = true;
 
         // Execution part 1/2
-        _transferFeesAndFundsWithWETH(
+        _transferFeesAndFundsWithETH(
             makerAsk.strategy,
             makerAsk.collection,
             tokenId,
@@ -441,7 +441,7 @@ contract DepoExchange is IDepoExchange, ReentrancyGuard, Ownable {
      * @param amount amount being transferred (in currency)
      * @param minPercentageToAsk minimum percentage of the gross amount that goes to ask
      */
-    function _transferFeesAndFundsWithWETH(
+    function _transferFeesAndFundsWithETH(
         address strategy,
         address collection,
         uint256 tokenId,
@@ -458,7 +458,7 @@ contract DepoExchange is IDepoExchange, ReentrancyGuard, Ownable {
 
             // Check if the protocol fee is different than 0 for this strategy
             if ((protocolFeeRecipient != address(0)) && (protocolFeeAmount != 0)) {
-                IERC20(WETH).safeTransfer(protocolFeeRecipient, protocolFeeAmount);
+                payable(protocolFeeRecipient).transfer(protocolFeeAmount);
                 finalSellerAmount -= protocolFeeAmount;
             }
         }
@@ -470,7 +470,7 @@ contract DepoExchange is IDepoExchange, ReentrancyGuard, Ownable {
 
             // Check if there is a royalty fee and that it is different to 0
             if ((royaltyFeeRecipient != address(0)) && (royaltyFeeAmount != 0)) {
-                IERC20(WETH).safeTransfer(royaltyFeeRecipient, royaltyFeeAmount);
+                payable(royaltyFeeRecipient).transfer(royaltyFeeAmount);
                 finalSellerAmount -= royaltyFeeAmount;
 
                 emit RoyaltyPayment(collection, tokenId, royaltyFeeRecipient, address(WETH), royaltyFeeAmount);
@@ -481,7 +481,7 @@ contract DepoExchange is IDepoExchange, ReentrancyGuard, Ownable {
 
         // 3. Transfer final amount (post-fees) to seller
         {
-            IERC20(WETH).safeTransfer(to, finalSellerAmount);
+            payable(to).transfer(finalSellerAmount);
         }
     }
 

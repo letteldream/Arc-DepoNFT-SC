@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import {ITransferManagerNFT} from "../interfaces/ITransferManagerNFT.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import {IERC165} from "@openzeppelin/contracts/interfaces/IERC165.sol";
 
 interface IArc721 is IERC721 {
     function transferFromOrMint(
@@ -43,6 +44,10 @@ contract TransferManagerERC721 is ITransferManagerNFT {
         uint256
     ) external override {
         require(msg.sender == DEPO_EXCHANGE, "Transfer: Only Depo Exchange");
-        IArc721(collection).transferFromOrMint(from, to, tokenId);
+        if (IERC165(collection).supportsInterface(type(IArc721).interfaceId)) {
+            IArc721(collection).transferFromOrMint(from, to, tokenId);
+        } else {
+            IERC721(collection).safeTransferFrom(from, to, tokenId);
+        }
     }
 }
