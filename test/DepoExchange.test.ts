@@ -83,6 +83,7 @@ describe("DepoExchange", () => {
     await erc721Token.mint(erc721Owner.address, 1);
     await erc721Token.mint(erc721Owner.address, 2);
     await erc721Token.mint(erc721Owner.address, 3);
+    await erc721Token.mint(erc721Owner.address, 4);
 
     //deploy DepoCurrencyManager
     receipt = await deployments.deploy("DepoCurrencyManager", {
@@ -230,13 +231,7 @@ describe("DepoExchange", () => {
 
     await erc721Token
       .connect(erc721Owner)
-      .approve(transferManagerERC721.address, 1);
-    await erc721Token
-      .connect(erc721Owner)
-      .approve(transferManagerERC721.address, 2);
-    await erc721Token
-      .connect(erc721Owner)
-      .approve(transferManagerERC721.address, 3);
+      .setApprovalForAll(transferManagerERC721.address, true);
     // WETHToken.connect(maker).approve(WETHToken.balanceOf(maker));
     // WETHToken.connect(taker).deposit({
     //   value: ethers.utils.parseEther("100.0"),
@@ -308,7 +303,7 @@ describe("DepoExchange", () => {
 
   describe("matchAskWithTakerBid", async () => {
     it("match should be confirmed", async () => {
-      const beforBalance = await erc20Token.balanceOf(erc20Owner.address);
+      const beforeBalance = await erc20Token.balanceOf(erc20Owner.address);
       const takeOrder = {
         isOrderAsk: false,
         taker: erc20Owner.address,
@@ -345,7 +340,7 @@ describe("DepoExchange", () => {
         .matchAskWithTakerBid(takeOrder, signedMakeOrder);
 
       const afterBalance = await erc20Token.balanceOf(erc20Owner.address);
-      expect(await beforBalance.sub(takeOrder.price)).to.be.equal(afterBalance);
+      expect(await beforeBalance.sub(takeOrder.price)).to.be.equal(afterBalance);
       expect(await erc721Token.ownerOf(1)).to.be.equal(erc20Owner.address);
     });
 
@@ -603,7 +598,7 @@ describe("DepoExchange", () => {
 
   describe("matchBidWithTakerAsk", async () => {
     it("match should be confirmed", async () => {
-      const beforBalance = await erc20Token.balanceOf(erc20Owner.address);
+      const beforeBalance = await erc20Token.balanceOf(erc20Owner.address);
       const takeOrder = {
         isOrderAsk: true,
         taker: erc721Owner.address,
@@ -640,7 +635,9 @@ describe("DepoExchange", () => {
         .matchBidWithTakerAsk(takeOrder, signedMakeOrder);
 
       const afterBalance = await erc20Token.balanceOf(erc20Owner.address);
-      expect(await beforBalance.sub(takeOrder.price)).to.be.equal(afterBalance);
+      expect(await beforeBalance.sub(takeOrder.price)).to.be.equal(
+        afterBalance
+      );
       expect(await erc721Token.ownerOf(2)).to.be.equal(erc20Owner.address);
     });
 
@@ -682,7 +679,56 @@ describe("DepoExchange", () => {
 
   describe("matchAskWithTakerBidUsingETHAndWETH", async () => {
     it("match should be confirmed", async () => {
-      //same logic
+      const beforeBalance = await erc20Owner.getBalance();
+      const ownerBeforeBalance = await erc721Owner.getBalance();
+      const takeOrder = {
+        isOrderAsk: false,
+        taker: erc20Owner.address,
+        price: 10,
+        tokenId: 4,
+        minPercentageToAsk: 9000,
+        params: [],
+      };
+
+      const makeOrder: MakerOrder = {
+        isOrderAsk: true,
+        signer: erc721Owner.address,
+        collection: erc721Token.address,
+        price: 10,
+        tokenId: 4,
+        amount: 3,
+        strategy: strategyStandardSaleForFixedPrice.address,
+        currency: erc20Token.address,
+        nonce: 2,
+        startTime: 0,
+        endTime: BigNumber.from(100000000000000),
+        minPercentageToAsk: 9000,
+        params: "0x",
+      };
+
+      const signedMakeOrder = await signMakeOrder(
+        erc721Owner,
+        depoExchange.address,
+        makeOrder
+      );
+
+      const tx = await depoExchange
+        .connect(erc20Owner)
+        .matchAskWithTakerBidUsingETHAndWETH(takeOrder, signedMakeOrder, { value: 10 });
+      const receipt = await tx.wait();
+
+      const afterBalance = await erc20Owner.getBalance();
+      const ownerAfterBalance = await erc721Owner.getBalance();
+
+      expect(
+        await beforeBalance
+          .sub(takeOrder.price)
+          .sub(receipt.gasUsed.mul(receipt.effectiveGasPrice))
+      ).to.be.equal(afterBalance);
+      expect(ownerBeforeBalance.add(takeOrder.price)).to.be.equal(
+        ownerAfterBalance
+      );
+      expect(await erc721Token.ownerOf(4)).to.be.equal(erc20Owner.address);
     });
     it("Order: Wrong sides", async () => {
       const takeOrder = {
