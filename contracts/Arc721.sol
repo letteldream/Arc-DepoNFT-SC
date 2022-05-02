@@ -26,6 +26,56 @@ contract Arc721 is OperatorRole, ERC721, ERC721Enumerable {
         return uri;
     }
 
+    function _generateRandomId(
+        address user,
+        uint256 timestamp,
+        uint256 nonce
+    ) internal pure returns (uint256) {
+        return uint256(keccak256(abi.encodePacked(user, timestamp, nonce)));
+    }
+
+    /**
+     * @dev mints new NFT and returns minted item's id
+     *
+     * @return tokenId id of new item
+     */
+    function mint() external returns (uint256 tokenId) {
+        uint256 nonce;
+        tokenId = _generateRandomId(msg.sender, block.timestamp, nonce);
+        while (_exists(tokenId)) {
+            unchecked {
+                nonce++;
+            }
+            tokenId = _generateRandomId(msg.sender, block.timestamp, nonce);
+        }
+
+        _mint(msg.sender, tokenId);
+    }
+
+    /**
+     * @dev mints new NFT and returns minted item's id
+     *
+     * @param amount number of tokens to mint
+     * @return ids ids of new items
+     */
+    function batchMint(uint256 amount) external returns (uint256[] memory ids) {
+        ids = new uint256[](amount);
+        uint256 i;
+        uint256 nonce;
+        for (; i < amount; i++) {
+            uint256 tokenId = _generateRandomId(msg.sender, block.timestamp, nonce);
+            while (_exists(tokenId)) {
+                unchecked {
+                    nonce++;
+                }
+                tokenId = _generateRandomId(msg.sender, block.timestamp, nonce);
+            }
+            _mint(msg.sender, tokenId);
+            ids[i] = tokenId;
+            nonce++;
+        }
+    }
+
     /**
      * @dev transfer the token if the tokenId exists, otherwise mint the token
      *
