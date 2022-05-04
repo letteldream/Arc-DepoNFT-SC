@@ -13,6 +13,7 @@ import {
   DepoTransferSelectorNFT,
   MockERC20,
   MockERC721,
+  Arc721,
   RoyaltyFeeRegistry,
   StrategyAnyItemFromCollectionForFixedPrice,
   StrategyPrivateSale,
@@ -48,6 +49,7 @@ describe("DepoExchange", () => {
 
   let erc20Token: MockERC20;
   let erc721Token: MockERC721;
+  let arc721Token: Arc721;
 
   const WETHAddress = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
   const DEPOAddress = "0xa5DEf515cFd373D17830E7c1de1639cB3530a112";
@@ -79,6 +81,13 @@ describe("DepoExchange", () => {
       log: true,
     });
     erc721Token = await ethers.getContractAt("MockERC721", receipt.address);
+
+    receipt = await deployments.deploy("Arc721", {
+      from: deployer.address,
+      args: ["baseuri"],
+      log: true,
+    });
+    arc721Token = await ethers.getContractAt("Arc721", receipt.address);
 
     await erc721Token.mint(erc721Owner.address, 1);
     await erc721Token.mint(erc721Owner.address, 2);
@@ -198,6 +207,8 @@ describe("DepoExchange", () => {
       "TransferManagerERC721",
       receipt.address
     );
+
+    await arc721Token.addOperator(transferManagerERC721.address);
 
     receipt = await deployments.deploy("TransferManagerERC1155", {
       from: deployer.address,
@@ -678,7 +689,7 @@ describe("DepoExchange", () => {
   });
 
   describe("matchAskWithTakerBidUsingETHAndWETH", async () => {
-    it("match should be confirmed", async () => {
+    it("match should be confirmed for normal ERC721", async () => {
       const beforeBalance = await erc20Owner.getBalance();
       const ownerBeforeBalance = await erc721Owner.getBalance();
       const takeOrder = {
@@ -729,6 +740,58 @@ describe("DepoExchange", () => {
         ownerAfterBalance
       );
       expect(await erc721Token.ownerOf(4)).to.be.equal(erc20Owner.address);
+    });
+    it("match should be confirmed for Arc721", async () => {
+      const beforeBalance = await erc20Owner.getBalance();
+      const ownerBeforeBalance = await erc721Owner.getBalance();
+      const takeOrder = {
+        isOrderAsk: false,
+        taker: erc20Owner.address,
+        price: 10,
+        tokenId: 5,
+        minPercentageToAsk: 9000,
+        params: [],
+      };
+
+      const makeOrder: MakerOrder = {
+        isOrderAsk: true,
+        signer: erc721Owner.address,
+        collection: arc721Token.address,
+        price: 10,
+        tokenId: 5,
+        amount: 3,
+        strategy: strategyStandardSaleForFixedPrice.address,
+        currency: erc20Token.address,
+        nonce: 3,
+        startTime: 0,
+        endTime: BigNumber.from(100000000000000),
+        minPercentageToAsk: 9000,
+        params: "0x",
+      };
+
+      const signedMakeOrder = await signMakeOrder(
+        erc721Owner,
+        depoExchange.address,
+        makeOrder
+      );
+
+      const tx = await depoExchange
+        .connect(erc20Owner)
+        .matchAskWithTakerBidUsingETHAndWETH(takeOrder, signedMakeOrder, { value: 10 });
+      const receipt = await tx.wait();
+
+      const afterBalance = await erc20Owner.getBalance();
+      const ownerAfterBalance = await erc721Owner.getBalance();
+
+      expect(
+        await beforeBalance
+          .sub(takeOrder.price)
+          .sub(receipt.gasUsed.mul(receipt.effectiveGasPrice))
+      ).to.be.equal(afterBalance);
+      expect(ownerBeforeBalance.add(takeOrder.price)).to.be.equal(
+        ownerAfterBalance
+      );
+      expect(await arc721Token.ownerOf(5)).to.be.equal(erc20Owner.address);
     });
     it("Order: Wrong sides", async () => {
       const takeOrder = {
