@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "./libraries/OperatorRole.sol";
+import {IArc721} from "./interfaces/IArc721.sol";
 
 /**
  * @title Arc721
@@ -80,6 +81,6 @@ contract Arc721 is OperatorRole, ERC721, ERC721Enumerable {
         override(ERC721, ERC721Enumerable)
         returns (bool)
     {
-        return super.supportsInterface(interfaceId);
+        return type(IArc721).interfaceId == interfaceId || super.supportsInterface(interfaceId);
     }
 }

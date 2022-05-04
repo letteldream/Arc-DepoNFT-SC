@@ -4,14 +4,7 @@ pragma solidity ^0.8.0;
 import {ITransferManagerNFT} from "../interfaces/ITransferManagerNFT.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {IERC165} from "@openzeppelin/contracts/interfaces/IERC165.sol";
-
-interface IArc721 is IERC721 {
-    function transferFromOrMint(
-        address,
-        address,
-        uint256
-    ) external;
-}
+import {IArc721} from "../interfaces/IArc721.sol";
 
 /**
  * @title TransferManagerERC721
