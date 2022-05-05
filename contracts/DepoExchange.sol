@@ -104,7 +104,7 @@ contract DepoExchange is IDepoExchange, ReentrancyGuard, Ownable {
         DOMAIN_SEPARATOR = keccak256(
             abi.encode(
                 0x8b73c3c69bb8fe3d512ecc4cf759cc79239f7b179b0ffacaa9a75d522b39400f, // keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)")
-                0xa0302a1844f6a119ed7c700047d71d6eb2d51a735a29597f682486d64088a98f, // keccak256("DepoExchange")
+                0xf1fa3c5275e98e862c6dbe6a07c5dfe6c16c56b5055e6549f76270ff48dd3fea, // keccak256("ARC Marketplace")
                 0xc89efdaa54c0f20c7adf612882df0950f5a951637e0307cdcb4c672f298b8bc6, // keccak256(bytes("1")) for versionId = 1
                 block.chainid,
                 address(this)
