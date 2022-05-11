@@ -1,11 +1,11 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import chai, { expect } from "chai";
 import { solidity } from "ethereum-waffle";
-import { zeroAddress } from "ethereumjs-util";
-import { BigNumber, BigNumberish, BytesLike } from "ethers";
-import { deployments, ethers, getNamedAccounts } from "hardhat";
+import { BigNumber } from "ethers";
+import { deployments, ethers } from "hardhat";
 
 import {
+  Arc721,
   DepoCurrencyManager,
   DepoExchange,
   DepoExecutionManager,
@@ -13,7 +13,6 @@ import {
   DepoTransferSelectorNFT,
   MockERC20,
   MockERC721,
-  Arc721,
   RoyaltyFeeRegistry,
   StrategyAnyItemFromCollectionForFixedPrice,
   StrategyPrivateSale,
@@ -351,7 +350,9 @@ describe("DepoExchange", () => {
         .matchAskWithTakerBid(takeOrder, signedMakeOrder);
 
       const afterBalance = await erc20Token.balanceOf(erc20Owner.address);
-      expect(await beforeBalance.sub(takeOrder.price)).to.be.equal(afterBalance);
+      expect(await beforeBalance.sub(takeOrder.price)).to.be.equal(
+        afterBalance
+      );
       expect(await erc721Token.ownerOf(1)).to.be.equal(erc20Owner.address);
     });
 
@@ -725,7 +726,9 @@ describe("DepoExchange", () => {
 
       const tx = await depoExchange
         .connect(erc20Owner)
-        .matchAskWithTakerBidUsingETHAndWETH(takeOrder, signedMakeOrder, { value: 10 });
+        .matchAskWithTakerBidUsingETHAndWETH(takeOrder, signedMakeOrder, {
+          value: 10,
+        });
       const receipt = await tx.wait();
 
       const afterBalance = await erc20Owner.getBalance();
@@ -777,7 +780,9 @@ describe("DepoExchange", () => {
 
       const tx = await depoExchange
         .connect(erc20Owner)
-        .matchAskWithTakerBidUsingETHAndWETH(takeOrder, signedMakeOrder, { value: 10 });
+        .matchAskWithTakerBidUsingETHAndWETH(takeOrder, signedMakeOrder, {
+          value: 10,
+        });
       const receipt = await tx.wait();
 
       const afterBalance = await erc20Owner.getBalance();

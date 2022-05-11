@@ -25,7 +25,7 @@ export async function signMakeOrder(
 ) {
   const chainId = BigNumber.from(await signer.getChainId());
   const domain = {
-    name: "DepoExchange",
+    name: "ARC Marketplace",
     version: "1",
     chainId,
     verifyingContract: verifier,
